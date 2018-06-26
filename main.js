@@ -1,7 +1,9 @@
 
-let a = new Vector(1, 2);
-let b = new Vector(-1, 3);
+let parent = document.body.childNodes[0];
 
-let x = op(a, '+', b);
+let canvas = new Canvas(parent, 512, 512);
+let actor = canvas.AddActor();
+let sprite = actor.AddComponent("Sprite");
+sprite.setImage('zombie.png');
 
-alert(x);
+canvas.Start();

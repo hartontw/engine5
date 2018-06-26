@@ -75,6 +75,44 @@ Math.roundTo = function(value, precision) {
     }
     
     return r;
+}class Random
+{
+    static get value() { return Math.random(); }
+    static get vector(){ return new Vector(Random.value, Random.value).normalized; }
+    static get angle() { return new Angle(Random.value * 360); }
+    
+    static Real(min, max)
+    {
+        if (typeof max === 'undefined')
+        {
+            const temp = min;
+            min = 0;
+            max = temp;
+        }
+        return Random.value * (max-min) + min;
+    }
+    
+    static Integer(min, max, inclusive = false)
+    {
+        if (typeof max === 'undefined')
+        {
+            const temp = min;
+            min = 0;
+            max = temp;
+        }
+        
+        min = Math.floor(min);
+        max = Math.ceil(max);
+        
+        const i = inclusive ? 1 : 0;
+        
+        return Math.floor(Random.value * (max-min+i) + min);
+    }
+    
+    static Index(length)
+    {
+        return Math.floor(Random.value * length);
+    }
 }class Class
 {
     add(other)
@@ -121,6 +159,130 @@ Math.roundTo = function(value, precision) {
     {
         return this !== other;
     }
+}let count = 0;
+
+class Canvas
+{    
+    constructor(parent, width, height, id='', name='engine5 Canvas', cssClass='engine5')
+    {
+        this._parent = parent;
+
+        this._canvas = document.createElement("canvas");
+        this._canvas.width = width;
+        this._canvas.height = height;
+        this._canvas.id = id === '' ? 'e5_'+count++ : id;
+        this._canvas.name = name;
+        this._canvas.class = cssClass;
+        
+        this._context = this._canvas.getContext("2d");
+       
+        document.body.insertBefore(this._canvas, parent);
+        
+        this._interval;
+        
+        this._canvasStart = new Date();
+        this._gameStart;
+        this._lastUpdate;
+        this._time = 0;
+        this.timeScale = 1;
+        this._frequency = 20;
+        
+        this.assetsPath = './assets/';
+        
+        this._actors = [];
+    }
+    
+    get id() { return this._canvas.id; }
+    get name() { return this._canvas.name; }
+    get cssClass() { return this._canvas.class; }
+    get width() { return this._canvas.width; }
+    get height() { return this._canvas.height; }
+    
+    get context() { return this._context; }
+    
+    get time() { return this._time; }
+    get deltaTime() 
+    { 
+        const delta = new Date().getTime() - this._lastUpdate.getTime();
+        return delta / this.timeScale / 1000;
+    }
+    
+    get frequency() { return this._frequency; }
+    set frequency(value)
+    {
+        this._frequency = value;
+        this.Stop();
+        this._Start();
+    }
+    
+    get fps() { return 1000 / this._frequency; }
+    set fps(value) 
+    { 
+        this._frequency = 1 / value;
+        this.Stop();
+        this._Start();
+    }
+    
+    Start(frequency = 20)
+    {
+        if (this.interval !== null)
+        {
+            this.Stop();
+            this.Clear();
+        }
+            
+        this._gameStart = new Date();
+        this._lastUpdate = new Date();
+        this._frequency = frequency;
+        this._Start();
+    }
+    
+    _Start()
+    {
+        var me = this;
+        this._interval = setInterval(function(){me.Update();}, this._frequency);        
+    }
+    
+    Clear()
+    {
+        this._context.clearRect(0, 0, this.width, this.height);
+    }
+    
+    Update()
+    {
+        this.Clear();
+        
+        this._time += this.deltaTime;
+
+        for (let i = 0; i < this._actors.length; i++)
+            this._actors[i].Update();
+        
+        this._lastUpdate = new Date();
+    }
+    
+    Stop()
+    {
+        clearInterval(this._interval);
+        this._interval = null;
+    }
+    
+    AddActor(position = Vector.zero, rotation = Angle.right, name = 'Actor')
+    {
+        var actor = new Actor(this, position, rotation, name);
+        this._actors.push(actor);
+        return actor;
+    }
+    
+    DestroyActor(actor)
+    {
+        let index = this._actors.indexOf(actor);
+        if (index > -1) 
+            this._components.splice(index, 1);            
+        
+        
+    }
+    
+    get defaultSpritePath() { return 'default/sprite.png'; }
 }class Struct extends Class
 {
     eq(other)
@@ -155,6 +317,97 @@ Math.roundTo = function(value, precision) {
     suneq(other)
     {
         return !this.seq(other);
+    }
+}class Component extends Class
+{
+    constructor(actor)
+    {
+        super();
+        this._actor = actor;
+    }
+    
+    get actor() { return this._actor; }
+    get canvas() { return this._actor.canvas; }
+    
+    get position() { return this._actor.position; }
+    set position(value) { this._actor.position = value; }
+    
+    get rotation() { return this._actor.rotation; }
+    set rotation(value) { this._actor.rotation = value; }
+    
+    get x() { return this._actor.x; }
+    set x(value) { this._actor.x = value; }
+    
+    get y() { return this._actor.y; }
+    set y(value) { return this._actor.y = value; }
+    
+    
+    Update()
+    {
+        
+    }
+    
+    static get Sprite() { return "Sprite"; };
+        
+    static GetComponentByName(name, parent)
+    {
+        switch(name)
+        {
+            case Component.Sprite:
+                return new Sprite(parent);
+            
+            default:
+                throw new Error("Wrong Component Name.");
+        }
+    }
+}class Actor extends Class
+{
+    constructor(canvas, position = Vector.zero, rotation = Angle.right, name = 'Actor')
+    {
+        super();
+        
+        this._canvas = canvas;
+        this.position = position;
+        this._rotation = typeof rotation === 'number' ? new Angle(rotation) : rotation;
+        this.name = name;
+                
+        this._components = [];
+    }
+    
+    get canvas() { return this._canvas; }    
+    get context() { return this._canvas.context; }
+    
+    get rotation() { return this._rotation; }
+    set rotation(value) { this._rotation = typeof value === 'number' ? new Angle(value) : rotation; }
+    
+    get x() { return this.position.x; }
+    set x(value) { this.position.x = value; }
+    
+    get y() { return this.position.y; }
+    set y(value) { this.position.y = value; }
+    
+    Update()
+    {
+        for(let i = 0; i < this._components.length; i++)
+            this._components[i].Update();
+        
+        this.position = this.position.add(Vector.one.mul(this.canvas.deltaTime*2));
+    }
+    
+    AddComponent(componentName)
+    {
+        var component = Component.GetComponentByName(componentName, this);
+        
+        if (!this._components.includes(component))
+            this._components.push(component);
+        
+        return component;
+    }
+    
+    RemoveComponent(component)
+    {
+        let index = this._components.indexOf(component);
+        if (index > -1) this._components.splice(index, 1);
     }
 }class Vector extends Struct
 {
@@ -280,8 +533,10 @@ Math.roundTo = function(value, precision) {
     }
 }class Angle extends Struct
 {	
-    constructor(value = 0, type='deg')
+    constructor(value = 0, type = 'deg')
     {
+        super();
+        
         this._deg = 0;
         this._rad = 0;
 
@@ -363,14 +618,52 @@ Math.roundTo = function(value, precision) {
     static get up() { return new Angle(90); }
     static get left() { return new Angle(180); }
     static get down() { return new Angle(270); }
+    
+    static Deg(value) { return new Angle(value, 'deg'); }
+    static Degrees(value) { return new Angle(value, 'deg'); }
+    static Rad(value) { return new Angle(value, 'rad'); }
+    static Radians(value) { return new Angle(value, 'rad'); }
 
-    static ToRadians(value)
+    static ToRadians(value) { return value * (Math.PI / 180); }
+    static ToDegrees(value) { return value * (180 / Math.PI); }
+}class Sprite extends Component
+{    
+    constructor(parent)
     {
-        return value * (Math.PI / 180);
+        super(parent);
+        this.width = 0;
+        this.height = 0;
+        this._image = null;
+        this.setImage();
     }
-
-    static ToDegrees(value)
+    
+    get image() { return this._image; }    
+    setImage(src, reset = true)
     {
-        return value * (180 / Math.PI);
+        if (typeof src === 'undefined')
+            src = this.canvas.defaultSpritePath;
+        
+        this._image = new Image();
+        this._image.src = this.canvas.assetsPath + src;
+        this._image.loaded = false;
+        
+        let me = this;
+        this._image.onload = function()
+        {
+            me._image.loaded = true;
+            if (reset) me.ResetSize();
+        };
+    }
+    
+    ResetSize()
+    {       
+        this.width = this.image.width;
+        this.height = this.image.height;
+    }
+    
+    Update()
+    {
+        if (this.image !== null && this.image.loaded)
+            this.canvas.context.drawImage(this.image, this.x, this.y, this.width, this.height);
     }
 }

@@ -1,8 +1,10 @@
 
 class Angle extends Struct
 {	
-    constructor(value = 0, type='deg')
+    constructor(value = 0, type = 'deg')
     {
+        super();
+        
         this._deg = 0;
         this._rad = 0;
 
@@ -84,14 +86,12 @@ class Angle extends Struct
     static get up() { return new Angle(90); }
     static get left() { return new Angle(180); }
     static get down() { return new Angle(270); }
+    
+    static Deg(value) { return new Angle(value, 'deg'); }
+    static Degrees(value) { return new Angle(value, 'deg'); }
+    static Rad(value) { return new Angle(value, 'rad'); }
+    static Radians(value) { return new Angle(value, 'rad'); }
 
-    static ToRadians(value)
-    {
-        return value * (Math.PI / 180);
-    }
-
-    static ToDegrees(value)
-    {
-        return value * (180 / Math.PI);
-    }
+    static ToRadians(value) { return value * (Math.PI / 180); }
+    static ToDegrees(value) { return value * (180 / Math.PI); }
 }
