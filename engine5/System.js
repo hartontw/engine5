@@ -4,6 +4,15 @@
  * and open the template in the editor.
  */
 
+function isNull(value) { return value === null; }
+function isFunction(value) { return typeof value === 'function'; }
+function isString(value) { return typeof value === 'string'; }
+function isNumber(value) { return typeof value === 'number'; }
+function isObject(value) { return typeof value === 'object'; }
+function isUndefined(value) { return typeof value === 'undefined'; }
+
+function undef(v, d) { return isUndefined(v) ? d : v; }
+
 function op(...params)
 {
     if (params.length < 3 || params.length % 2 === 0)

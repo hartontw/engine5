@@ -4,25 +4,27 @@
  * and open the template in the editor.
  */
 
-class Sprite extends Component
+class Sprite extends Renderer
 {    
-    constructor(parent)
+    constructor(actor, src, width, height)
     {
-        super(parent);
-        this.width = 0;
-        this.height = 0;
+        super(actor);
+        
+        this.width = width;
+        this.height = height;
         this._image = null;
-        this.setImage();
+        
+        this.SetImage(src);
     }
     
     get image() { return this._image; }
-    setImage(src, reset = true)
+    SetImage(src, reset = true)
     {
-        if (typeof src === 'undefined')
-            src = this.canvas.defaultSpritePath;
-        
+        src = undef(src, this.canvas.defaultSpritePath);
+
         this._image = new Image();
         this._image.src = this.canvas.assetsPath + src;
+
         this._image.loaded = false;
         
         let me = this;
@@ -33,15 +35,16 @@ class Sprite extends Component
         };
     }
     
+    get loaded() { return this._image.loaded; }
+    
     ResetSize()
-    {       
+    {
         this.width = this.image.width;
         this.height = this.image.height;
     }
     
-    Update()
+    _Update()
     {
-        if (this.image !== null && this.image.loaded)
-            this.canvas.context.drawImage(this.image, this.x, this.y, this.width, this.height);
+        Drawings.Sprite(this);
     }
 }

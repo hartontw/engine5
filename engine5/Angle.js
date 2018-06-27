@@ -94,4 +94,6 @@ class Angle extends Struct
 
     static ToRadians(value) { return value * (Math.PI / 180); }
     static ToDegrees(value) { return value * (180 / Math.PI); }
+    
+    static Get(value) { return isNumber(value) ? new Angle(value) : value; }
 }

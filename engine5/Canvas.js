@@ -33,6 +33,7 @@ class Canvas
         this._frequency = 20;
         
         this.assetsPath = './assets/';
+        this.pixelPerUnit = 100;
         
         this._actors = [];
     }
@@ -68,6 +69,32 @@ class Canvas
         this._Start();
     }
     
+    GetActors() 
+    {
+        let actors = [];
+        for(let i = 0; i < this._actors.length; i++)
+            actors[i] = this._actors[i];
+        return actors;
+    }
+    
+    get actors() { return this._actors.length; }
+    
+    GetDepth(actor) { return (this._actors.length - 1) - this._actors.indexOf(actor); }
+    SetDepth(actor, index)
+    { 
+        let i = this._actors.indexOf(actor);
+        if (i > -1)
+        {
+            const last = this._actors.length - 1;
+
+            index = undef(index, last);
+            index = last - Math.max(0, Math.min(index, last));
+
+            this._actors.splice(i, 1);
+            this._actors.splice(index, 0, actor);
+        }
+    }
+    
     Start(frequency = 20)
     {
         if (this.interval !== null)
@@ -85,7 +112,7 @@ class Canvas
     _Start()
     {
         var me = this;
-        this._interval = setInterval(function(){me.Update();}, this._frequency);        
+        this._interval = setInterval(function(){me._Update();}, this._frequency);        
     }
     
     Clear()
@@ -93,14 +120,14 @@ class Canvas
         this._context.clearRect(0, 0, this.width, this.height);
     }
     
-    Update()
+    _Update()
     {
         this.Clear();
         
         this._time += this.deltaTime;
 
         for (let i = 0; i < this._actors.length; i++)
-            this._actors[i].Update();
+            this._actors[i]._Update();
         
         this._lastUpdate = new Date();
     }
@@ -111,19 +138,29 @@ class Canvas
         this._interval = null;
     }
     
-    AddActor(position = Vector.zero, rotation = Angle.right, name = 'Actor')
+    AddActor(actor)
     {
-        var actor = new Actor(this, position, rotation, name);
-        this._actors.push(actor);
+        if (!this._actors.includes(actor))
+            this._actors.push(actor);
+        
+        actor._canvas = this;
+        
         return actor;
+    }
+    
+    RemoveActor(actor)
+    {
+        let index = this._actors.indexOf(actor);
+        if (index > -1) 
+        {
+            this._actors.splice(index, 1);   
+            actor._canvas = null;
+        }
     }
     
     DestroyActor(actor)
     {
-        let index = this._actors.indexOf(actor);
-        if (index > -1) 
-            this._components.splice(index, 1);            
-        
+        this.RemoveActor(actor);
         //delete actor;
     }
     

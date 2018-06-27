@@ -13,7 +13,6 @@ class Component extends Class
     }
     
     get actor() { return this._actor; }
-    get canvas() { return this._actor.canvas; }
     
     get position() { return this._actor.position; }
     set position(value) { this._actor.position = value; }
@@ -27,20 +26,16 @@ class Component extends Class
     get y() { return this._actor.y; }
     set y(value) { return this._actor.y = value; }
     
-    
-    Update()
-    {
-        
-    }
+    _Update(){}
     
     static get Sprite() { return "Sprite"; };
         
-    static GetComponentByName(name, parent)
+    static GetComponentByName(actor, name, ...params)
     {
         switch(name)
         {
             case Component.Sprite:
-                return new Sprite(parent);
+                return new Sprite(actor, params[0], params[1], params[2]);
             
             default:
                 throw new Error("Wrong Component Name.");

@@ -1,7 +1,16 @@
 Math.roundTo = function(value, precision) {
 	precision = Math.pow(10, precision);
 	return Math.round(value*precision) / precision;
-};function op(...params)
+};function isNull(value) { return value === null; }
+function isFunction(value) { return typeof value === 'function'; }
+function isString(value) { return typeof value === 'string'; }
+function isNumber(value) { return typeof value === 'number'; }
+function isObject(value) { return typeof value === 'object'; }
+function isUndefined(value) { return typeof value === 'undefined'; }
+
+function undef(v, d) { return isUndefined(v) ? d : v; }
+
+function op(...params)
 {
     if (params.length < 3 || params.length % 2 === 0)
         throw new Error("Wrong number of arguments.");
@@ -113,6 +122,33 @@ Math.roundTo = function(value, precision) {
     {
         return Math.floor(Random.value * length);
     }
+}class Drawings
+{
+    static Sprite(sprite)
+    {
+        if (sprite.loaded)
+            sprite.context.drawImage(sprite.image, sprite.x, sprite.y, sprite.width, sprite.height);
+        else
+            Drawings.Rectangle(sprite.context, sprite.x, sprite.y, sprite.width, sprite.height);
+    }
+    
+    static Rectangle(ctx, x, y, width, height)
+    {
+        x -= width*0.5;
+        y -= height*0.5;
+        
+        ctx.moveTo(x, y);
+        ctx.lineTo(x+width, y);
+        ctx.lineTo(x+width, y+height);
+        ctx.lineTo(x, y+height);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    }
+
+    static Square(ctx, x, y, size)
+    {
+        Drawings.Rectanlge(ctx, x, y, size, size);
+    }
 }class Class
 {
     add(other)
@@ -188,6 +224,7 @@ class Canvas
         this._frequency = 20;
         
         this.assetsPath = './assets/';
+        this.pixelPerUnit = 100;
         
         this._actors = [];
     }
@@ -223,6 +260,32 @@ class Canvas
         this._Start();
     }
     
+    GetActors() 
+    {
+        let actors = [];
+        for(let i = 0; i < this._actors.length; i++)
+            actors[i] = this._actors[i];
+        return actors;
+    }
+    
+    get actors() { return this._actors.length; }
+    
+    GetDepth(actor) { return (this._actors.length - 1) - this._actors.indexOf(actor); }
+    SetDepth(actor, index)
+    { 
+        let i = this._actors.indexOf(actor);
+        if (i > -1)
+        {
+            const last = this._actors.length - 1;
+
+            index = undef(index, last);
+            index = last - Math.max(0, Math.min(index, last));
+
+            this._actors.splice(i, 1);
+            this._actors.splice(index, 0, actor);
+        }
+    }
+    
     Start(frequency = 20)
     {
         if (this.interval !== null)
@@ -240,7 +303,7 @@ class Canvas
     _Start()
     {
         var me = this;
-        this._interval = setInterval(function(){me.Update();}, this._frequency);        
+        this._interval = setInterval(function(){me._Update();}, this._frequency);        
     }
     
     Clear()
@@ -248,14 +311,14 @@ class Canvas
         this._context.clearRect(0, 0, this.width, this.height);
     }
     
-    Update()
+    _Update()
     {
         this.Clear();
         
         this._time += this.deltaTime;
 
         for (let i = 0; i < this._actors.length; i++)
-            this._actors[i].Update();
+            this._actors[i]._Update();
         
         this._lastUpdate = new Date();
     }
@@ -266,19 +329,29 @@ class Canvas
         this._interval = null;
     }
     
-    AddActor(position = Vector.zero, rotation = Angle.right, name = 'Actor')
+    AddActor(actor)
     {
-        var actor = new Actor(this, position, rotation, name);
-        this._actors.push(actor);
+        if (!this._actors.includes(actor))
+            this._actors.push(actor);
+        
+        actor._canvas = this;
+        
         return actor;
+    }
+    
+    RemoveActor(actor)
+    {
+        let index = this._actors.indexOf(actor);
+        if (index > -1) 
+        {
+            this._actors.splice(index, 1);   
+            actor._canvas = null;
+        }
     }
     
     DestroyActor(actor)
     {
-        let index = this._actors.indexOf(actor);
-        if (index > -1) 
-            this._components.splice(index, 1);            
-        
+        this.RemoveActor(actor);
         
     }
     
@@ -327,7 +400,6 @@ class Canvas
     }
     
     get actor() { return this._actor; }
-    get canvas() { return this._actor.canvas; }
     
     get position() { return this._actor.position; }
     set position(value) { this._actor.position = value; }
@@ -341,20 +413,16 @@ class Canvas
     get y() { return this._actor.y; }
     set y(value) { return this._actor.y = value; }
     
-    
-    Update()
-    {
-        
-    }
+    _Update(){}
     
     static get Sprite() { return "Sprite"; };
         
-    static GetComponentByName(name, parent)
+    static GetComponentByName(actor, name, ...params)
     {
         switch(name)
         {
             case Component.Sprite:
-                return new Sprite(parent);
+                return new Sprite(actor, params[0], params[1], params[2]);
             
             default:
                 throw new Error("Wrong Component Name.");
@@ -362,23 +430,25 @@ class Canvas
     }
 }class Actor extends Class
 {
-    constructor(canvas, position = Vector.zero, rotation = Angle.right, name = 'Actor')
+    constructor(name = 'Actor', position = Vector.zero, rotation = Angle.right, tag = 'None')
     {
         super();
         
-        this._canvas = canvas;
-        this.position = position;
-        this._rotation = typeof rotation === 'number' ? new Angle(rotation) : rotation;
         this.name = name;
-                
+        this.position = position;
+        this._rotation = Angle.Get(rotation);
+        this.tag = tag;
+
+        this._canvas = null;
         this._components = [];
     }
     
-    get canvas() { return this._canvas; }    
+    get canvas() { return this._canvas; }
+    set canvas(value) { value.AddActor(this); }
     get context() { return this._canvas.context; }
     
     get rotation() { return this._rotation; }
-    set rotation(value) { this._rotation = typeof value === 'number' ? new Angle(value) : rotation; }
+    set rotation(value) { this._rotation = Angle.Get(rotation); }
     
     get x() { return this.position.x; }
     set x(value) { this.position.x = value; }
@@ -386,17 +456,28 @@ class Canvas
     get y() { return this.position.y; }
     set y(value) { this.position.y = value; }
     
-    Update()
+    get depth() { return this.canvas.GetDepth(this); }
+    set depth(value) { this.canvas.SetDepth(this, value); }
+    
+    ToFront() { this.canvas.SetDepth(this); }
+    ToBack() { this.canvas.SetDepth(this, 0); }
+    
+    Closer(value) { this.depth = this.depth - undef(value, 1); }
+    Further(value) { this.depth = this.depth + undef(value, 1); }
+    
+    _Update()
     {
         for(let i = 0; i < this._components.length; i++)
-            this._components[i].Update();
+            this._components[i]._Update();
         
-        this.position = this.position.add(Vector.one.mul(this.canvas.deltaTime*2));
+        this.Update();
     }
     
-    AddComponent(componentName)
+    Update(){}
+    
+    AddComponent(componentName, ...params)
     {
-        var component = Component.GetComponentByName(componentName, this);
+        var component = Component.GetComponentByName(this, componentName, ...params);
         
         if (!this._components.includes(component))
             this._components.push(component);
@@ -626,25 +707,47 @@ class Canvas
 
     static ToRadians(value) { return value * (Math.PI / 180); }
     static ToDegrees(value) { return value * (180 / Math.PI); }
-}class Sprite extends Component
-{    
-    constructor(parent)
+    
+    static Get(value) { return isNumber(value) ? new Angle(value) : value; }
+}class Renderer extends Component
+{
+    constructor(actor)
     {
-        super(parent);
-        this.width = 0;
-        this.height = 0;
-        this._image = null;
-        this.setImage();
+        super(actor);
     }
     
-    get image() { return this._image; }    
-    setImage(src, reset = true)
+    get canvas() { return this.actor.canvas; }
+    get context() { return this.canvas.context; }
+    
+    get depth() { return this.actor.depth; }
+    set depth(value) { this.actor.depth = value; }
+    
+    ToFront() { this.actor.ToFront(); }
+    ToBack() { this.actor.ToBack(); }
+    
+    Closer(value) { this.actor.Closer(value); }
+    Further(value) { this.actor.Further(value); }
+}class Sprite extends Renderer
+{    
+    constructor(actor, src, width, height)
     {
-        if (typeof src === 'undefined')
-            src = this.canvas.defaultSpritePath;
+        super(actor);
         
+        this.width = width;
+        this.height = height;
+        this._image = null;
+        
+        this.SetImage(src);
+    }
+    
+    get image() { return this._image; }
+    SetImage(src, reset = true)
+    {
+        src = undef(src, this.canvas.defaultSpritePath);
+
         this._image = new Image();
         this._image.src = this.canvas.assetsPath + src;
+
         this._image.loaded = false;
         
         let me = this;
@@ -655,15 +758,16 @@ class Canvas
         };
     }
     
+    get loaded() { return this._image.loaded; }
+    
     ResetSize()
-    {       
+    {
         this.width = this.image.width;
         this.height = this.image.height;
     }
     
-    Update()
+    _Update()
     {
-        if (this.image !== null && this.image.loaded)
-            this.canvas.context.drawImage(this.image, this.x, this.y, this.width, this.height);
+        Drawings.Sprite(this);
     }
 }
